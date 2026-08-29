@@ -948,5 +948,13 @@ bookId = null;
 currentDocumentName = "Documento1";
 renderPage(0);
 </script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('Service Worker ativo!'))
+      .catch(err => console.log('Erro no Service Worker:', err));
+  }
+</script>
+
 </body>
 </html>
