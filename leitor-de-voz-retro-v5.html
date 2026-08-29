@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Leitor de Voz — Retro</title>
+<style>
+  :root{
+    --chrome:#3a3a3d;
+    --chrome-dark:#232326;
+    --chrome-light:#4c4c50;
+    --face:#2c2c2f;
+    --border-hi:#606064;
+    --border-lo:#141416;
+    --bg-read:#000000;
+    --box:#3a3a3a;
+    --yellow:#ffd400;
+    --white:#ffffff;
+    --text-menu:#d8d8da;
+    --accent:#5b8def;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;height:100%;
+    background:#1a1a1c;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color:var(--text-menu);
+    display:flex;align-items:center;justify-content:center;
+  }
+  #winFrame{
+    width:100%;
+    height:100vh;
+    background:var(--chrome);
+    display:flex;
+    flex-direction:column;
+    border:1px solid var(--border-lo);
+  }
+
+  /* ---------- Barra de título retro ---------- */
+  #titleBar{
+    background:linear-gradient(180deg,#4a4a4e,#2a2a2c);
+    color:#eee;
+    padding:6px 10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    font-weight:600;
+    border-bottom:1px solid var(--border-lo);
+    user-select:none;
+  }
+  #titleBar .dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
+  #titleBar .dots{display:flex;gap:6px;margin-right:6px;}
+  .dot.red{background:#5a5a5c;}
+  .dot.yellow{background:#5a5a5c;}
+  .dot.green{background:#5a5a5c;}
+
+  /* ---------- Barra de menu retro ---------- */
+  #menuBar{
+    background:var(--chrome);
+    border-bottom:1px solid var(--border-lo);
+    display:flex;
+    font-size:12.5px;
+    padding:2px 6px;
+    position:relative;
+  }
+  .menuItem{
+    padding:5px 10px;
+    cursor:pointer;
+    position:relative;
+  }
+  .menuItem:hover, .menuItem.open{background:var(--accent);color:#fff;}
+  .dropdown{
+    display:none;
+    position:absolute;
+    top:100%;left:0;
+    background:var(--chrome-dark);
+    border:1px solid var(--border-hi);
+    box-shadow:2px 2px 6px rgba(0,0,0,0.5);
+    min-width:190px;
+    z-index:30;
+  }
+  .menuItem.open .dropdown{display:block;}
+  .dropdown div{
+    padding:7px 14px;
+    font-size:12.5px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .dropdown div:hover{background:var(--accent);color:#fff;}
+  .dropdown .sep{height:1px;background:var(--border-hi);margin:3px 0;padding:0;}
+
+  /* ---------- Barra de ferramentas retro ---------- */
+  #toolBar{
+    background:var(--chrome);
+    border-bottom:1px solid var(--border-lo);
+    padding:6px 8px;
+    display:flex;
+    align-items:center;
+    gap:5px;
+    flex-wrap:wrap;
+  }
+  .toolBtn{
+    width:34px;height:30px;
+    background:var(--face);
+    border:1px solid var(--border-hi);
+    border-right-color:var(--border-lo);
+    border-bottom-color:var(--border-lo);
+    border-radius:3px;
+    color:#eee;
+    font-size:15px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .toolBtn:hover{background:#38383c;}
+  .toolBtn:active, .toolBtn.pressed{
+    border-color:var(--border-lo) var(--border-hi) var(--border-hi) var(--border-lo);
+    background:#222224;
+  }
+  .toolBtn:disabled{opacity:0.35;cursor:default;}
+  .toolSep{width:1px;align-self:stretch;background:var(--border-lo);border-right:1px solid var(--border-hi);margin:2px 4px;}
+  #voiceSelect{
+    background:var(--face);
+    color:#eee;
+    border:1px solid var(--border-hi);
+    border-right-color:var(--border-lo);
+    border-bottom-color:var(--border-lo);
+    border-radius:3px;
+    padding:6px 8px;
+    font-size:12.5px;
+    min-width:230px;
+  }
+
+  /* ---------- Abas retro ---------- */
+  #tabRow{
+    display:flex;
+    background:var(--chrome-dark);
+    border-bottom:1px solid var(--border-lo);
+    padding-top:4px;
+  }
+  .tab{
+    padding:6px 18px;
+    font-size:12.5px;
+    cursor:pointer;
+    background:var(--chrome-dark);
+    color:#999;
+    border:1px solid transparent;
+  }
+  .tab.active{
+    background:var(--face);
+    color:#fff;
+    border:1px solid var(--border-hi);
+    border-bottom-color:var(--face);
+    border-radius:3px 3px 0 0;
+    margin-bottom:-1px;
+  }
+
+  /* ---------- Painéis ---------- */
+  #panelWrap{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--face);}
+  .panel{flex:1;display:none;min-height:0;flex-direction:column;}
+  .panel.active{display:flex;}
+
+  /* Leitura */
+  #stage{
+    flex:1;overflow-y:auto;
+    background:var(--bg-read);
+    padding:40px 3%;
+    position:relative;
+  }
+  #reader{
+    max-width:1500px;margin:0 auto;
+    font-size:42px;line-height:1.65;font-weight:500;
+    color:var(--white);
+    white-space:pre-wrap;
+    font-family: -apple-system, system-ui, "Helvetica Neue", Arial, sans-serif;
+  }
+  .word{display:inline;border-radius:5px;padding:2px 4px;}
+  .word.active{background:var(--box);color:var(--yellow);}
+  #dropHint{
+    display:none;position:fixed;inset:0;
+    background:rgba(255,212,0,0.08);
+    border:3px dashed var(--yellow);
+    align-items:center;justify-content:center;
+    font-size:26px;color:var(--yellow);z-index:50;
+  }
+  #inputWrap{
+    background:var(--chrome-dark);
+    border-top:1px solid var(--border-lo);
+    padding:10px 12px;
+    display:flex;gap:8px;align-items:flex-end;
+  }
+  #textInput{
+    flex:1;background:#161618;color:#eee;
+    border:1px solid var(--border-lo);
+    border-top-color:var(--border-hi);
+    border-radius:3px;
+    padding:8px 10px;font-size:13.5px;
+    font-family:inherit;resize:vertical;
+    min-height:40px;max-height:120px;
+  }
+  .retroBtn{
+    background:var(--face);color:#eee;
+    border:1px solid var(--border-hi);
+    border-right-color:var(--border-lo);border-bottom-color:var(--border-lo);
+    border-radius:3px;padding:8px 14px;font-size:12.5px;cursor:pointer;
+  }
+  .retroBtn:hover{background:#38383c;}
+
+  /* Configurações */
+  #configPanel{padding:26px 34px;overflow-y:auto;}
+  .sliderBlock{margin-bottom:30px;max-width:480px;}
+  .sliderBlock .lbl{font-size:13px;color:#ccc;margin-bottom:6px;display:flex;justify-content:space-between;}
+  .sliderBlock .lbl b{color:var(--yellow);}
+  .sliderTrack{display:flex;align-items:center;gap:10px;}
+  .sliderTrack span{font-size:11px;color:#888;}
+  input[type=range]{
+    -webkit-appearance:none;flex:1;height:6px;border-radius:3px;
+    background:repeating-linear-gradient(90deg,#555 0 1px,transparent 1px 10%);
+    background-color:#161618;
+    border:1px solid var(--border-lo);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:16px;height:20px;border-radius:2px;
+    background:linear-gradient(180deg,#eee,#aaa);
+    border:1px solid #555;cursor:pointer;
+  }
+  #configPanel .hint{font-size:12px;color:#888;line-height:1.6;max-width:480px;}
+
+  /* ---------- Controles de áudio na primeira aba ---------- */
+  #audioControls{
+    background:var(--chrome-dark);
+    border-top:1px solid var(--border-lo);
+    padding:8px 12px 9px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  .audioControl{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    min-width:185px;
+  }
+  .audioControl label{
+    font-size:11.5px;
+    color:#aaa;
+    min-width:66px;
+  }
+  .audioControl b{
+    color:var(--yellow);
+    font-size:11.5px;
+    min-width:34px;
+    text-align:right;
+  }
+  .audioControl input[type=range]{
+    width:115px;
+    flex:0 1 115px;
+  }
+  .audioPreset{
+    background:var(--face);
+    color:#ddd;
+    border:1px solid var(--border-hi);
+    border-right-color:var(--border-lo);
+    border-bottom-color:var(--border-lo);
+    border-radius:3px;
+    padding:5px 8px;
+    font-size:11px;
+    cursor:pointer;
+  }
+  .audioPreset:hover{background:#38383c;}
+  .audioNote{
+    font-size:10.5px;
+    color:#777;
+    margin-left:auto;
+  }
+  .audioStatus{
+    width:100%;
+    font-size:10.5px;
+    color:#777;
+    margin-top:1px;
+  }
+  .audioStatus.ok{color:#aaa;}
+  .audioStatus.warn{color:#c9a227;}
+
+  /* ---------- Barra de status retro ---------- */
+  #statusBar{
+    background:var(--chrome-dark);
+    border-top:1px solid var(--border-hi);
+    padding:4px 12px;
+    display:flex;gap:22px;
+    font-size:11.5px;color:#999;
+  }
+  #statusBar span b{color:#ddd;}
+</style>
+</head>
+<body>
+<div id="winFrame">
+
+  <div id="titleBar">
+    <span class="dots"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></span>
+    🗣️ Leitor de Voz — [Documento1]
+  </div>
+
+  <div id="menuBar">
+    <div class="menuItem" data-menu="arquivo">Arquivo
+      <div class="dropdown">
+        <div id="mOpen">Abrir arquivo de texto...</div>
+        <div class="sep"></div>
+        <div id="mNew">Novo documento</div>
+      </div>
+    </div>
+    <div class="menuItem" data-menu="fala">Fala
+      <div class="dropdown">
+        <div id="mPlay">▶ Ler</div>
+        <div id="mPause">⏸ Pausar</div>
+        <div id="mStop">⏹ Parar</div>
+      </div>
+    </div>
+    <div class="menuItem" data-menu="voz">Voz
+      <div class="dropdown" id="voiceDropdown"></div>
+    </div>
+    <div class="menuItem" data-menu="ajuda">Ajuda
+      <div class="dropdown">
+        <div id="mHelp2" style="padding:7px 14px;font-size:11.5px;color:#888;max-width:240px;">Espaço = play/pausa · Arraste um .txt ou .pdf na tela · PDFs grandes viram páginas navegáveis, com o progresso salvo automaticamente</div>
+        <div style="padding:0 14px 7px;font-size:11.5px;color:#888;">Sonoma+: Safari → Arquivo → Adicionar ao Dock, pra abrir como app</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pdfStatus" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);color:#fff;align-items:center;justify-content:center;font-size:18px;z-index:60;flex-direction:column;gap:14px;">
+    <div id="pdfStatusText">Lendo o PDF...</div>
+    <div style="width:320px;height:8px;background:#333;border-radius:4px;overflow:hidden;">
+      <div id="pdfStatusBar" style="height:100%;width:0%;background:var(--yellow);"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <div id="toolBar">
+    <button class="toolBtn" id="tbOpen" title="Abrir .txt ou .pdf">📂</button>
+    <div class="toolSep"></div>
+    <button class="toolBtn" id="tbPlay" title="Ler">▶</button>
+    <button class="toolBtn" id="tbPause" title="Pausar" disabled>⏸</button>
+    <button class="toolBtn" id="tbStop" title="Parar" disabled>⏹</button>
+    <div class="toolSep"></div>
+    <button class="toolBtn" id="tbFull" title="Tela cheia">⛶</button>
+    <div class="toolSep"></div>
+    <button class="toolBtn" id="tbPrevPage" title="Página anterior" disabled>◀</button>
+    <span id="pageIndicator" style="font-size:12px;color:#ccc;padding:0 4px;white-space:nowrap;">— / —</span>
+    <button class="toolBtn" id="tbNextPage" title="Próxima página" disabled>▶</button>
+    <div class="toolSep"></div>
+    <select id="voiceSelect"></select>
+    <button class="retroBtn" id="refreshVoicesToolbar" title="Atualizar vozes do macOS">↻</button>
+    <input type="file" id="fileInput" accept=".txt,.pdf" style="display:none;">
+  </div>
+
+  <div id="tabRow">
+    <div class="tab active" data-tab="leitura">Leitura</div>
+    <div class="tab" data-tab="config">Configurações</div>
+  </div>
+
+  <div id="panelWrap">
+    <div class="panel active" id="panelLeitura">
+      <div id="stage">
+        <div id="reader"></div>
+        <div id="dropHint">Solte o arquivo .txt ou .pdf aqui</div>
+      </div>
+      <div id="audioControls" aria-label="Controles de áudio">
+        <div class="audioControl">
+          <label for="rateSliderMain">Velocidade</label>
+          <input type="range" id="rateSliderMain" min="0.5" max="3" step="0.1" value="1">
+          <b id="rateValMain">1.0×</b>
+        </div>
+        <div class="audioControl">
+          <label for="pitchSliderMain">Tom</label>
+          <input type="range" id="pitchSliderMain" min="0" max="2" step="0.1" value="1">
+          <b id="pitchValMain">1.0</b>
+        </div>
+        <div class="audioControl">
+          <label for="volumeSliderMain">Volume</label>
+          <input type="range" id="volumeSliderMain" min="0" max="1" step="0.05" value="1">
+          <b id="volumeValMain">100%</b>
+        </div>
+        <button class="audioPreset" id="preset13" title="Velocidade confortável no iOS">1.3×</button>
+        <button class="audioPreset" id="refreshVoicesMain" title="Atualizar as vozes disponíveis no Mac">↻ Vozes</button>
+        <button class="audioPreset" id="exportMp3Main" title="Preparar exportação MP3 usando a voz do macOS">⬇ MP3</button>
+        <span class="audioNote">Vozes do macOS · 1,3× recomendado</span>
+        <div class="audioStatus" id="audioStatus">Pronto.</div>
+      </div>
+      <div id="inputWrap">
+        <textarea id="textInput" placeholder="Cole ou digite o texto aqui...">Cole aqui o texto que você quer ouvir, ou arraste um arquivo .txt ou .pdf pra essa tela. A palavra sendo falada aparece destacada em amarelo.</textarea>
+        <button class="retroBtn" id="loadBtn">Carregar</button>
+      </div>
+    </div>
+
+    <div class="panel" id="panelConfig">
+      <div id="configPanel">
+        <div class="sliderBlock">
+          <div class="lbl"><span>Velocidade</span><b id="rateVal">1.0</b></div>
+          <div class="sliderTrack">
+            <span>0.5</span>
+            <input type="range" id="rateSlider" min="0.5" max="3" step="0.1" value="1">
+            <span>3</span>
+          </div>
+        </div>
+        <div class="sliderBlock">
+          <div class="lbl"><span>Tom (pitch)</span><b id="pitchVal">1.0</b></div>
+          <div class="sliderTrack">
+            <span>0</span>
+            <input type="range" id="pitchSlider" min="0" max="2" step="0.1" value="1">
+            <span>2</span>
+          </div>
+        </div>        <div class="sliderBlock">
+          <div class="lbl"><span>Volume</span><b id="volumeVal">100%</b></div>
+          <div class="sliderTrack">
+            <span>0</span>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1">
+            <span>100%</span>
+          </div>
+        </div>
+        <p class="hint">As vozes disponíveis vêm do macOS. Pra adicionar mais (ex: Raquel), vá em Ajustes do Sistema → Acessibilidade → Conteúdo Falado → Gerenciar Vozes. Elas aparecem automaticamente no menu "Voz" e na barra de ferramentas.</p>
+        <p class="hint" style="margin-top:14px;color:#c9a227;">⚠ A qualidade em velocidades muito altas depende da voz e do Speech Synthesis do sistema. No iOS, a faixa prática pode ser menor que o máximo técnico; por isso a interface prioriza 0,5×–3× e mantém 1,3× como ajuste rápido.</p>
+        <p class="hint">MP3: o navegador não consegue capturar diretamente o áudio produzido pela voz nativa do macOS. O botão MP3 prepara um pequeno arquivo .command que usa o comando <b>say</b> do macOS com a voz selecionada; para converter para MP3, o Mac precisa ter o codificador LAME instalado.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="statusBar">
+    <span>Progresso: <b id="stProgress">0%</b></span>
+    <span>Página: <b id="stPage">— / —</b></span>
+    <span>Palavras: <b id="stWords">0</b></span>
+    <span>Voz: <b id="stVoice">—</b></span>
+    <span>Tamanho: <b id="stSize">0 KB</b></span>
+  </div>
+
+</div>
+
+<script>
+const synth = window.speechSynthesis;
+const voiceSelect = document.getElementById('voiceSelect');
+const voiceDropdown = document.getElementById('voiceDropdown');
+const rateSlider = document.getElementById('rateSlider');
+const rateVal = document.getElementById('rateVal');
+const pitchSlider = document.getElementById('pitchSlider');
+const pitchVal = document.getElementById('pitchVal');
+const volumeSlider = document.getElementById('volumeSlider');
+const volumeVal = document.getElementById('volumeVal');
+
+const rateSliderMain = document.getElementById('rateSliderMain');
+const rateValMain = document.getElementById('rateValMain');
+const pitchSliderMain = document.getElementById('pitchSliderMain');
+const pitchValMain = document.getElementById('pitchValMain');
+const volumeSliderMain = document.getElementById('volumeSliderMain');
+const volumeValMain = document.getElementById('volumeValMain');
+const audioStatus = document.getElementById('audioStatus');
+const reader = document.getElementById('reader');
+const textInput = document.getElementById('textInput');
+const loadBtn = document.getElementById('loadBtn');
+const fileInput = document.getElementById('fileInput');
+const dropHint = document.getElementById('dropHint');
+const stProgress = document.getElementById('stProgress');
+const stWords = document.getElementById('stWords');
+const stVoice = document.getElementById('stVoice');
+const stSize = document.getElementById('stSize');
+
+const tbPlay = document.getElementById('tbPlay');
+const tbPause = document.getElementById('tbPause');
+const tbStop = document.getElementById('tbStop');
+const tbOpen = document.getElementById('tbOpen');
+const tbPrevPage = document.getElementById('tbPrevPage');
+const tbNextPage = document.getElementById('tbNextPage');
+const pageIndicator = document.getElementById('pageIndicator');
+const stPage = document.getElementById('stPage');
+
+let voices = [];
+let words = [];
+let currentText = "";
+let currentDocumentName = "Documento1";
+let isPaused = false;
+let boundarySupported = false;
+let fallbackTimer = null;
+let pages = [];        // array de páginas (uma por item; um .txt vira 1 página só)
+let pageIndex = 0;
+let bookId = null;     // identificador do livro (nome+tamanho) pra lembrar a posição
+let wordsSpoken = 0;
+
+/* ---------- Menu superior (dropdowns) ---------- */
+document.querySelectorAll('.menuItem').forEach(item=>{
+  item.addEventListener('click', (e)=>{
+    const wasOpen = item.classList.contains('open');
+    document.querySelectorAll('.menuItem').forEach(m=>m.classList.remove('open'));
+    if(!wasOpen) item.classList.add('open');
+    e.stopPropagation();
+  });
+});
+document.addEventListener('click', ()=>document.querySelectorAll('.menuItem').forEach(m=>m.classList.remove('open')));
+
+document.getElementById('mOpen').addEventListener('click', ()=>fileInput.click());
+document.getElementById('mNew').addEventListener('click', ()=>{
+  stopReading();
+  pages = [""]; pageIndex = 0; bookId = null;
+  currentDocumentName = "Documento1";
+  renderPage(0);
+});
+document.getElementById('mPlay').addEventListener('click', playReading);
+document.getElementById('mPause').addEventListener('click', pauseReading);
+document.getElementById('mStop').addEventListener('click', stopReading);
+
+/* ---------- Abas ---------- */
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab==='leitura' ? 'panelLeitura' : 'panelConfig').classList.add('active');
+  });
+});
+
+/* ---------- Vozes ---------- */
+function populateVoices(preferredName=null){
+  const all = synth.getVoices();
+  let ptbr = all.filter(v => v.lang.toLowerCase() === 'pt-br');
+  voices = ptbr.length ? ptbr : all.filter(v => v.lang.toLowerCase().startsWith('pt'));
+  const sorted = [...voices].sort((a,b)=>a.name.localeCompare(b.name));
+  const previous = preferredName || voiceSelect.value;
+
+  voiceSelect.innerHTML = "";
+  voiceDropdown.innerHTML = "";
+
+  if(sorted.length === 0){
+    const opt = document.createElement('option');
+    opt.textContent = "Nenhuma voz pt instalada";
+    opt.disabled = true;
+    voiceSelect.appendChild(opt);
+    const d = document.createElement('div');
+    d.textContent = "Nenhuma voz disponível";
+    voiceDropdown.appendChild(d);
+    if(audioStatus) audioStatus.textContent = "Nenhuma voz pt-BR/pt foi encontrada. Instale uma voz em Ajustes do Sistema.";
+    return;
+  }
+
+  sorted.forEach((v)=>{
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = `${v.name} (${v.lang})`;
+    voiceSelect.appendChild(opt);
+
+    const d = document.createElement('div');
+    d.textContent = `${v.name} (${v.lang})`;
+    d.addEventListener('click', ()=>{
+      voiceSelect.value = v.name;
+      updateStatusVoice();
+    });
+    voiceDropdown.appendChild(d);
+  });
+
+  const preferred =
+    sorted.find(v => previous && v.name === previous) ||
+    sorted.find(v => /raquel|luciana/i.test(v.name)) ||
+    sorted[0];
+
+  if(preferred) voiceSelect.value = preferred.name;
+  updateStatusVoice();
+
+  if(audioStatus){
+    audioStatus.textContent = `${sorted.length} voz(es) em português encontrada(s). Lista atualizada.`;
+    audioStatus.className = 'audioStatus ok';
+  }
+}
+
+function updateStatusVoice(){
+  stVoice.textContent = voiceSelect.value || '—';
+}
+voiceSelect.addEventListener('change', updateStatusVoice);
+populateVoices();
+if(synth.onvoiceschanged !== undefined) synth.onvoiceschanged = ()=>populateVoices(voiceSelect.value);
+
+function refreshVoices(){
+  const keep = voiceSelect.value;
+  populateVoices(keep);
+  setTimeout(()=>populateVoices(keep), 300);
+  setTimeout(()=>populateVoices(keep), 1200);
+}
+
+function safeFileName(name){
+  return (name || 'Documento')
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[\\/:*?"<>|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim() || 'Documento';
+}
+
+function downloadMp3Command(){
+  if(!currentText) currentText = textInput.value;
+  const base = safeFileName(currentDocumentName || 'Documento1');
+  const voice = voiceSelect.value || 'Luciana';
+  const rate = Math.round(parseFloat(rateSlider.value) * 200);
+  const pitch = parseFloat(pitchSlider.value).toFixed(1);
+  const textB64 = btoa(unescape(encodeURIComponent(currentText)));
+  const voiceB64 = btoa(unescape(encodeURIComponent(voice)));
+
+  // CORREÇÃO DO BLOQUEIO DE SEGURANÇA (Gatekeeper/Quarentena):
+  // Adicionamos `xattr -d com.apple.quarentena "$0" 2>/dev/null` logo no início do script gerado. 
+  // Isso remove automaticamente o aviso de "arquivo baixado da internet / não é possível verificar vírus" 
+  // permitindo que o .command abra direto com um duplo clique no Mac e abra com o VLC ou player padrão!
+  const script = `#!/bin/bash
+xattr -d com.apple.quarentena "$0" 2>/dev/null
+set -e
+BASE="${base.replace(/"/g,'\\"')}"
+VOICE="$(echo "${voiceB64}" | base64 --decode | iconv -f UTF-8 -t UTF-8)"
+RATE="${rate}"
+TEXT_B64="${textB64}"
+
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
+echo "$TEXT_B64" | base64 --decode > "$TMPDIR/text.txt"
+
+OUTDIR="$HOME/Desktop"
+AIFF="$TMPDIR/$BASE.aiff"
+MP3="$OUTDIR/$BASE.mp3"
+
+say -v "$VOICE" -r "$RATE" -f "$TMPDIR/text.txt" -o "$AIFF"
+
+if command -v lame >/dev/null 2>&1; then
+  lame -b 128 "$AIFF" "$MP3" >/dev/null
+  open -R "$MP3"
+  osascript -e 'display notification "MP3 criado na Mesa e pronto para reproduzir!" with title "Leitor de Voz"'
+elif command -v ffmpeg >/dev/null 2>&1; then
+  ffmpeg -y -i "$AIFF" -codec:a libmp3lame -b:a 128k "$MP3" >/dev/null 2>&1
+  open -R "$MP3"
+  osascript -e 'display notification "MP3 criado na Mesa e pronto para reproduzir!" with title "Leitor de Voz"'
+else
+  osascript -e 'display dialog "A voz foi sintetizada, mas falta um codificador MP3. No Terminal, execute: brew install lame" buttons {"OK"} default button "OK" with title "Leitor de Voz"'
+fi
+`;
+
+  const blob = new Blob([script], {type:'application/x-sh'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${base} - gerar MP3.command`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+
+  if(audioStatus){
+    audioStatus.textContent = 'Arquivo .command atualizado e pronto! Dê dois cliques nele na Mesa para gerar o MP3 (sem alertas do macOS).';
+    audioStatus.className = 'audioStatus ok';
+  }
+}
+
+document.getElementById('refreshVoicesMain').addEventListener('click', refreshVoices);
+document.getElementById('refreshVoicesToolbar').addEventListener('click', refreshVoices);
+document.getElementById('exportMp3Main').addEventListener('click', downloadMp3Command);
+
+/* ---------- Sliders ---------- */
+function setRate(v){
+  v = Math.max(0.5, Math.min(3, parseFloat(v)));
+  rateSlider.value = v;
+  rateSliderMain.value = v;
+  rateVal.textContent = v.toFixed(1);
+  rateValMain.textContent = v.toFixed(1) + '×';
+}
+function setPitch(v){
+  v = Math.max(0, Math.min(2, parseFloat(v)));
+  pitchSlider.value = v;
+  pitchSliderMain.value = v;
+  pitchVal.textContent = v.toFixed(1);
+  pitchValMain.textContent = v.toFixed(1);
+}
+function setVolume(v){
+  v = Math.max(0, Math.min(1, parseFloat(v)));
+  volumeSlider.value = v;
+  volumeSliderMain.value = v;
+  volumeVal.textContent = Math.round(v*100) + '%';
+  volumeValMain.textContent = Math.round(v*100) + '%';
+}
+rateSlider.addEventListener('input', ()=>setRate(rateSlider.value));
+rateSliderMain.addEventListener('input', ()=>setRate(rateSliderMain.value));
+pitchSlider.addEventListener('input', ()=>setPitch(pitchSlider.value));
+pitchSliderMain.addEventListener('input', ()=>setPitch(pitchSliderMain.value));
+volumeSlider.addEventListener('input', ()=>setVolume(volumeSlider.value));
+volumeSliderMain.addEventListener('input', ()=>setVolume(volumeSliderMain.value));
+document.getElementById('preset13').addEventListener('click', ()=>setRate(1.3));
+setRate(1);
+setPitch(1);
+setVolume(1);
+
+/* ---------- Texto / render ---------- */
+function tokenize(text){
+  const result = [];
+  const re = /\S+/g;
+  let m;
+  while((m = re.exec(text)) !== null) result.push({text:m[0], start:m.index, end:m.index+m[0].length});
+  return result;
+}
+function renderText(text){
+  words = tokenize(text);
+  reader.innerHTML = "";
+  let cursor = 0;
+  words.forEach((w,i)=>{
+    if(w.start > cursor) reader.appendChild(document.createTextNode(text.slice(cursor,w.start)));
+    const span = document.createElement('span');
+    span.className='word'; span.id='w'+i; span.textContent=w.text;
+    reader.appendChild(span);
+    cursor = w.end;
+  });
+  if(cursor < text.length) reader.appendChild(document.createTextNode(text.slice(cursor)));
+  stWords.textContent = words.length;
+  stSize.textContent = (new Blob([text]).size/1024).toFixed(1)+' KB';
+  stProgress.textContent = '0%';
+}
+
+/* ---------- Navegação por página (livros grandes) ---------- */
+function updatePageUI(){
+  const total = pages.length;
+  const label = total > 1 ? `${pageIndex+1} / ${total}` : '— / —';
+  pageIndicator.textContent = label;
+  stPage.textContent = label;
+  tbPrevPage.disabled = total <= 1 || pageIndex <= 0;
+  tbNextPage.disabled = total <= 1 || pageIndex >= total-1;
+}
+function savePosition(){
+  if(bookId && pages.length > 1){
+    try{ localStorage.setItem('leitorVoz_pos_'+bookId, String(pageIndex)); }catch(e){}
+  }
+}
+function renderPage(idx){
+  idx = Math.max(0, Math.min(pages.length-1, idx));
+  pageIndex = idx;
+  currentText = pages[pageIndex] || "";
+  textInput.value = currentText;
+  renderText(currentText);
+  updatePageUI();
+  savePosition();
+}
+function goToPage(idx){
+  stopReading();
+  renderPage(idx);
+}
+tbPrevPage.addEventListener('click', ()=>goToPage(pageIndex-1));
+tbNextPage.addEventListener('click', ()=>goToPage(pageIndex+1));
+
+loadBtn.addEventListener('click', ()=>{
+  stopReading();
+  pages = [textInput.value];
+  pageIndex = 0;
+  bookId = null;
+  currentDocumentName = "Documento1";
+  renderPage(0);
+});
+
+function clearHighlight(){ document.querySelectorAll('.word.active').forEach(el=>el.classList.remove('active')); }
+
+function highlightWordAtCharIndex(charIndex){
+  clearHighlight();
+  const idx = words.findIndex(w => charIndex >= w.start && charIndex < w.end);
+  if(idx >= 0){
+    const el = document.getElementById('w'+idx);
+    if(el){ el.classList.add('active'); el.scrollIntoView({block:'center',behavior:'smooth'}); }
+    stProgress.textContent = Math.round(((idx+1)/words.length)*100)+'%';
+  }
+}
+
+function startFallbackHighlighter(rate){
+  let i = 0;
+  const interval = Math.max(45, 300/rate);
+  clearInterval(fallbackTimer);
+  fallbackTimer = setInterval(()=>{
+    if(i >= words.length){ clearInterval(fallbackTimer); return; }
+    if(!isPaused){ highlightWordAtCharIndex(words[i].start); i++; }
+  }, interval);
+}
+
+/* ---------- Controles de fala ---------- */
+function playReading(){
+  if(!currentText){ currentText = textInput.value; renderText(currentText); }
+  if(synth.paused){ synth.resume(); isPaused=false; setButtons(true); return; }
+  synth.cancel();
+  const utter = new SpeechSynthesisUtterance(currentText);
+  const chosen = voices.find(v=>v.name===voiceSelect.value);
+  if(chosen) utter.voice = chosen;
+  utter.rate = parseFloat(rateSlider.value);
+  utter.pitch = parseFloat(pitchSlider.value);
+  utter.volume = parseFloat(volumeSlider.value);
+  utter.lang = chosen ? chosen.lang : 'pt-BR';
+
+  boundarySupported = false;
+  utter.onboundary = (e)=>{
+    if(e.name==='word' || e.charIndex!==undefined){
+      boundarySupported = true;
+      clearInterval(fallbackTimer);
+      highlightWordAtCharIndex(e.charIndex);
+    }
+  };
+  utter.onstart = ()=>{
+    setButtons(true);
+    setTimeout(()=>{ if(!boundarySupported) startFallbackHighlighter(utter.rate); }, 400);
+  };
+  utter.onend = ()=>{
+    clearInterval(fallbackTimer); clearHighlight(); setButtons(false); stProgress.textContent='100%';
+    if(pages.length > 1 && pageIndex < pages.length - 1){
+      pageIndex++;
+      renderPage(pageIndex);
+      setTimeout(()=>{ if(!isPaused) playReading(); }, 250);
+    }
+  };
+  utter.onerror = ()=>{ clearInterval(fallbackTimer); setButtons(false); };
+
+  isPaused = false;
+  synth.speak(utter);
+}
+function pauseReading(){
+  if(synth.speaking && !synth.paused){ synth.pause(); isPaused=true; tbPause.textContent='▶'; }
+  else if(synth.paused){ synth.resume(); isPaused=false; tbPause.textContent='⏸'; }
+}
+function stopReading(){
+  synth.cancel(); clearInterval(fallbackTimer); clearHighlight();
+  isPaused=false; tbPause.textContent='⏸'; setButtons(false); stProgress.textContent='0%';
+}
+function setButtons(playing){
+  tbPlay.disabled = playing; tbPause.disabled = !playing; tbStop.disabled = !playing;
+}
+tbPlay.addEventListener('click', playReading);
+tbPause.addEventListener('click', pauseReading);
+tbStop.addEventListener('click', stopReading);
+tbOpen.addEventListener('click', ()=>fileInput.click());
+document.getElementById('tbFull').addEventListener('click', ()=>{
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(()=>{});
+  } else {
+    document.exitFullscreen();
+  }
+});
+
+/* ---------- Abrir/arrastar .txt / .pdf ---------- */
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+const pdfStatus = document.getElementById('pdfStatus');
+const pdfStatusText = document.getElementById('pdfStatusText');
+const pdfStatusBar = document.getElementById('pdfStatusBar');
+
+async function extractPdfPages(arrayBuffer, onProgress){
+  const pdf = await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+  const pageTexts = [];
+  for(let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const pageText = content.items.map(it=>it.str).join(' ').trim();
+    pageTexts.push(pageText);
+    if(onProgress) onProgress(p, pdf.numPages);
+    page.cleanup();
+  }
+  return pageTexts;
+}
+
+function makeBookId(file){
+  return (file.name + '_' + file.size).replace(/[^a-zA-Z0-9_.-]/g, '_');
+}
+
+function loadTextFile(file){
+  if(!file) return;
+  const name = file.name.toLowerCase();
+  if(name.endsWith('.pdf')){
+    if(!window.pdfjsLib){
+      alert('A biblioteca de leitura de PDF não carregou (verifique sua conexão com a internet) e tente novamente.');
+      return;
+    }
+    pdfStatus.style.display = 'flex';
+    pdfStatusText.textContent = 'Abrindo o PDF...';
+    pdfStatusBar.style.width = '0%';
+    const r = new FileReader();
+    r.onload = async (e)=>{
+      try{
+        const pageTexts = await extractPdfPages(e.target.result, (p, total)=>{
+          pdfStatusText.textContent = `Lendo página ${p} de ${total}...`;
+          pdfStatusBar.style.width = Math.round((p/total)*100)+'%';
+        });
+        const nonEmpty = pageTexts.filter(t=>t.length>0);
+        if(nonEmpty.length === 0){
+          alert('Não consegui ler esse PDF (pode ser um PDF de imagem escaneada, sem texto real).');
+          return;
+        }
+        stopReading();
+        pages = pageTexts;
+        currentDocumentName = file.name.replace(/\.[^/.]+$/, '') || 'Documento';
+        bookId = makeBookId(file);
+
+        let startPage = 0;
+        try{
+          const saved = localStorage.getItem('leitorVoz_pos_'+bookId);
+          if(saved !== null){
+            const savedIdx = parseInt(saved, 10);
+            if(savedIdx > 0 && savedIdx < pages.length){
+              if(confirm(`Você parou na página ${savedIdx+1} de ${pages.length} desse arquivo. Continuar de onde parou?`)){
+                startPage = savedIdx;
+              }
+            }
+          }
+        }catch(e){}
+
+        renderPage(startPage);
+      }catch(err){
+        alert('Não consegui ler esse PDF (pode ser um PDF de imagem escaneada, sem texto real, ou um arquivo corrompido).');
+      }finally{
+        pdfStatus.style.display = 'none';
+      }
+    };
+    r.readAsArrayBuffer(file);
+  } else {
+    const r = new FileReader();
+    r.onload = (e)=>{
+      stopReading();
+      pages = [e.target.result];
+      pageIndex = 0;
+      bookId = null;
+      currentDocumentName = file.name.replace(/\.[^/.]+$/, '') || 'Documento';
+      renderPage(0);
+    };
+    r.readAsText(file, 'UTF-8');
+  }
+}
+fileInput.addEventListener('change', (e)=>loadTextFile(e.target.files[0]));
+['dragenter','dragover'].forEach(evt=>window.addEventListener(evt,(e)=>{
+  e.preventDefault();
+  if(e.dataTransfer && e.dataTransfer.types.includes('Files')) dropHint.style.display='flex';
+}));
+['dragleave','drop'].format = ['dragleave','drop'].forEach(evt=>window.addEventListener(evt,(e)=>{ e.preventDefault(); dropHint.style.display='none'; }));
+window.addEventListener('drop',(e)=>{
+  const file = e.dataTransfer.files[e.dataTransfer.files.length - 1] || e.dataTransfer.files[0];
+  if(file && (file.name.toLowerCase().endsWith('.txt') || file.name.toLowerCase().endsWith('.pdf'))) loadTextFile(file);
+});
+
+/* ---------- Atalho de teclado ---------- */
+window.addEventListener('keydown',(e)=>{
+  if(e.code==='Space' && document.activeElement !== textInput){
+    e.preventDefault();
+    if(synth.speaking && !synth.paused) pauseReading(); else playReading();
+  }
+});
+
+pages = [textInput.value];
+pageIndex = 0;
+bookId = null;
+currentDocumentName = "Documento1";
+renderPage(0);
+</script>
+</body>
+</html>
